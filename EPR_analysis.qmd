@@ -7,6 +7,9 @@ format:
       code-tools: true
       code-fold: true
       toc: true
+params:
+  input_dir: "data"
+  output_dir: "csv"
 ---
 
 ```{r, message=FALSE, warning=FALSE}
@@ -14,14 +17,15 @@ library('tidyverse')
 library('patchwork')
 library('reactable')
 source('importfunction_epr.R')
+source('functions.R')
 #setwd("")
 ```
 
 
 ```{r Convert DTA into CSV, echo=FALSE, include=FALSE}
 # Define the input and output file paths
-inputfile <- "data"
-outputfile <- "csv"
+inputfile <- params$input_dir
+outputfile <- params$output_dir
 
 # Call the Python script
 python_script <- "DTAtoCSVconv.py"
@@ -115,7 +119,7 @@ plotly::ggplotly(p01)
 
 selection <- data.frame(selection=c(2906,3224,3379,3406,3476))
 
-  p1a <- ggplot(all_data%>%
+  power_analysis_plot  <- ggplot(all_data%>%
         filter(sample == 'MBXXX', scans == 2, amplitude_G==15, scan_width==1200), 
         aes(Field_G, Intensity, color=as.factor(power_uW), label=g.value))+
   geom_line(aes(y = stage(Intensity, after_stat = y + (c(0, 0.5, 1, 1.5, 2))[group])), linewidth=1)+
@@ -128,32 +132,16 @@ selection <- data.frame(selection=c(2906,3224,3379,3406,3476))
     aes(xintercept = selection),
     size=0.5, linetype = "dashed") 
 
-plotly::ggplotly(p1a)
+plotly::ggplotly(power_analysis_plot )
 ```
 
 ```{r DATA4, warning=FALSE}
-find.closest <- function(x,your.number){x[which.min(abs(x-your.number))]}
-
-selection <- c(2906,3224,3379,3406,3476)
 power <- c(20, 40, 80, 320, 640, 1280)
 
-powerstaturation <- c()
-for (p in power){
-for(y in selection){
-  data.filtered <- all_data %>% #
-  filter(sample == 'MBXXX',scan_width==1200, power_uW==p)
-  
-  data <- data.filtered %>%
-    filter (Field_G==find.closest(data.filtered$Field_G, y))
-  
-  powerstaturation <- rbind(powerstaturation, data)
-}}
-
-powerstaturationa <- powerstaturation %>%
-  mutate(sqrt = sqrt(power_uW))%>%
-  mutate(power_uW = as.factor(power_uW))%>%
-  mutate(Field_G = as.factor(format(Field_G, digits=4, scientific=FALSE, drop0trailing=TRUE))) #so later it will be easier to facet it
-
+powerstaturation <- compute_power_saturation(all_data, 
+                                             sample_name= "MBXXX",, 
+                                             power_levels= power, 
+                                             selection_points=selection$selection)
 
 # New facet label names for supp variable
 Field_G.labs <- paste(selectiona, "G", sep = " ")
@@ -161,13 +149,13 @@ names(Field_G.labs) <- selectiona
 
 
 # Compute the slope and intercept from the first two points per facet
-ref_lines <- powerstaturationa %>%
+ref_lines <- powerstaturation %>%
   group_by(Field_G) %>%
   arrange(sqrt) %>%
   slice(1:2) %>%
   summarise(slope = diff(Intensity) / diff(sqrt), intercept = first(Intensity) - first(sqrt) * (diff(Intensity) / diff(sqrt)), .groups = 'drop')
 
-p2a <- ggplot(powerstaturationa, aes(sqrt, Intensity)) +
+saturation_plot  <- ggplot(powerstaturation, aes(sqrt, Intensity)) +
   geom_point()+
   ggh4x::facet_grid2(. ~ Field_G, scales = "free_y", labeller = labeller(Field_G = Field_G.labs), independent = "y")+ 
  # geom_smooth(method='lm', color = "black", size=0.5)+
@@ -179,10 +167,10 @@ p2a <- ggplot(powerstaturationa, aes(sqrt, Intensity)) +
 
 
 
-p3a <- p1a/
-  p2a
+combined_plot  <- power_analysis_plot /
+  saturation_plot 
 
-p3a
+combined_plot 
 
 ```
 
