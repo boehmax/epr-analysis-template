@@ -1,0 +1,190 @@
+---
+title: EPR analysis from YYYY-MM-DD XX CODH
+author: Author
+date: YYYY-MM-DD
+format: 
+  html:
+      code-tools: true
+      code-fold: true
+      toc: true
+---
+
+```{r, message=FALSE, warning=FALSE}
+library('tidyverse')
+library('patchwork')
+library('reactable')
+source('importfunction_epr.R')
+#setwd("")
+```
+
+
+```{r Convert DTA into CSV, echo=FALSE, include=FALSE}
+# Define the input and output file paths
+inputfile <- "data"
+outputfile <- "csv"
+
+# Call the Python script
+python_script <- "DTAtoCSVconv.py"
+system(paste("python3", python_script, "-i", inputfile, "-o", outputfile, "-a"))
+
+```
+
+
+```{r, warning=FALSE}
+filenames <- tools::file_path_sans_ext(list.files("data", pattern = ".DTA"))
+
+all_data <- process_multiple_files(filenames)
+
+GHz <- 9.28
+
+all_data$g.value <- 71.4484*GHz/all_data$Field_G*10
+
+sample.info <- read.csv('data/sample_info.csv')
+```
+
+## Sample Information
+```{r sample}
+reactable(sample.info, 
+          columns = list(
+            ID = colDef(name = "Sample ID"),
+            Date = colDef(name = "Date"),
+            Protein.ID = colDef(name = "Protein ID"),
+            Protein.Concentration = colDef(name = "Protein Concentration [µM]"),
+            Sample.Volume = colDef(name = "Sample Volume [µL]"),
+            Redox = colDef(name = "Redox"),
+            CO.flused.buffer = colDef(name = "CO Flushed Buffer"),
+            Buffer = colDef(name = "Buffer"),
+            Buffer.Concentration = colDef(name = "Buffer Concentration [mM]"),
+            NaCl = colDef(name = "NaCl [mM]"),
+            Storage = colDef(name = "Storage"),
+            Note = colDef(name = "Note")
+          ),
+          bordered = TRUE,
+          striped = TRUE,
+          highlight = TRUE,
+          defaultPageSize = 10,
+          showPageSizeOptions = TRUE,
+          pageSizeOptions = c(5, 10, 15),
+          paginationType = "simple",
+          searchable = TRUE,  # Add search bar
+          theme = reactableTheme(
+            color = "#000000",  # Black text
+            backgroundColor = "#FFFFFF",  # White background
+            borderColor = "#DDDDDD",  # Light gray borders
+            stripedColor = "#F7F7F7",  # Light gray stripes
+            highlightColor = "#E6E6E6",  # Slightly darker gray for highlight
+            cellPadding = "8px 12px",  # Padding for cells
+            headerStyle = list(
+              backgroundColor = "#F0F0F0",  # Light gray header background
+              borderBottom = "1px solid #DDDDDD",  # Border for header
+              fontWeight = "bold"  # Bold header text
+            ),
+            searchInputStyle = list(
+              width = "100%",  # Full width search input
+              padding = "8px",  # Padding for search input
+              border = "1px solid #DDDDDD",  # Border for search input
+              borderRadius = "4px"  # Rounded corners for search input
+            )
+          ))
+```
+
+
+## Enzyme I data
+### Overview
+```{r DATA1, warning=FALSE}
+#| column: screen
+#| out-width: 80%
+#| fig-format: svg
+p01<-   ggplot(all_data%>%
+        filter(power_uW==20, sample != 'MBXXX', scans==2, amplitude_G==15), 
+        aes(Field_G, Intensity, color=sample, label=g.value))+
+  geom_line(aes(y = stage(Intensity, after_stat = y + (c(0, 0.5, 1, 1.5, 2))[group])), linewidth=1)+
+    theme_bw()+
+  scale_color_brewer(palette = "Set2", name= "Samples") + 
+  xlim(2780,3980) +
+  xlab("Field in G")
+
+plotly::ggplotly(p01)
+```
+
+### Poweranalysis of MBXXX
+```{r DATA12, warning=FALSE}
+#| column: screen
+#| out-width: 80%
+#| fig-format: svg
+
+selection <- data.frame(selection=c(2906,3224,3379,3406,3476))
+
+  p1a <- ggplot(all_data%>%
+        filter(sample == 'MBXXX', scans == 2, amplitude_G==15, scan_width==1200), 
+        aes(Field_G, Intensity, color=as.factor(power_uW), label=g.value))+
+  geom_line(aes(y = stage(Intensity, after_stat = y + (c(0, 0.5, 1, 1.5, 2))[group])), linewidth=1)+
+    theme_bw()+
+  scale_color_brewer(palette = "Set2", name = "Power in µW") + 
+  xlim(2780,3980)+
+  xlab("Field in G")+
+  geom_vline(
+    data=selection,
+    aes(xintercept = selection),
+    size=0.5, linetype = "dashed") 
+
+plotly::ggplotly(p1a)
+```
+
+```{r DATA4, warning=FALSE}
+find.closest <- function(x,your.number){x[which.min(abs(x-your.number))]}
+
+selection <- c(2906,3224,3379,3406,3476)
+power <- c(20, 40, 80, 320, 640, 1280)
+
+powerstaturation <- c()
+for (p in power){
+for(y in selection){
+  data.filtered <- all_data %>% #
+  filter(sample == 'MBXXX',scan_width==1200, power_uW==p)
+  
+  data <- data.filtered %>%
+    filter (Field_G==find.closest(data.filtered$Field_G, y))
+  
+  powerstaturation <- rbind(powerstaturation, data)
+}}
+
+powerstaturationa <- powerstaturation %>%
+  mutate(sqrt = sqrt(power_uW))%>%
+  mutate(power_uW = as.factor(power_uW))%>%
+  mutate(Field_G = as.factor(format(Field_G, digits=4, scientific=FALSE, drop0trailing=TRUE))) #so later it will be easier to facet it
+
+
+# New facet label names for supp variable
+Field_G.labs <- paste(selectiona, "G", sep = " ")
+names(Field_G.labs) <- selectiona
+
+
+# Compute the slope and intercept from the first two points per facet
+ref_lines <- powerstaturationa %>%
+  group_by(Field_G) %>%
+  arrange(sqrt) %>%
+  slice(1:2) %>%
+  summarise(slope = diff(Intensity) / diff(sqrt), intercept = first(Intensity) - first(sqrt) * (diff(Intensity) / diff(sqrt)), .groups = 'drop')
+
+p2a <- ggplot(powerstaturationa, aes(sqrt, Intensity)) +
+  geom_point()+
+  ggh4x::facet_grid2(. ~ Field_G, scales = "free_y", labeller = labeller(Field_G = Field_G.labs), independent = "y")+ 
+ # geom_smooth(method='lm', color = "black", size=0.5)+
+    theme_bw()+
+  scale_color_brewer(palette = "Set2")+
+  theme(legend.position = "off")+
+  xlab('squarroot of power in sqrt(uW)')+
+  geom_abline(data = ref_lines, aes(slope = slope, intercept = intercept), color = "darkslategray4", linewidth = 1)
+
+
+
+p3a <- p1a/
+  p2a
+
+p3a
+
+```
+
+
+## Other

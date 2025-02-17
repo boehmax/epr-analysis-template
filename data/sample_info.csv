@@ -1,0 +1,12 @@
+ID,Date,Protein ID,Protein Concentration,Sample Volume,Redox,CO flused buffer,Buffer,Buffer Concentration,NaCl,Storage,Note
+MB033,23/07/2025,Rf22/01,100,100,0.0,0,Tris-HCl pH8,50,0,ML,as prepared
+MB034,23/07/2025,Rf22/01,100,100,1.0,0,Tris-HCl pH8,50,0,ML,CO2 oxidiced
+MB035,23/07/2025,Rf22/01,100,100,1.0,0,Tris-HCl pH8,50,0,ML,NaDT reduced
+MB036,23/07/2025,Rf22/01,100,100,1.0,0,Tris-HCl pH8,50,0,ML,DTT reduced
+MB037,23/07/2025,Rf22/01,100,100,0.0,1,Tris-HCl pH8,50,0,ML,CO reduced
+,,,,,,,,,,,
+,,,,,,,,,,,
+,,,,,,,,,,,
+,,,,,,,,,,,
+,,,,,,,,,,,
+,,,,,,,,,,,
