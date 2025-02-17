@@ -16,7 +16,6 @@ params:
 library('tidyverse')
 library('patchwork')
 library('reactable')
-source('importfunction_epr.R')
 source('functions.R')
 #setwd("")
 ```
@@ -37,7 +36,7 @@ system(paste("python3", python_script, "-i", inputfile, "-o", outputfile, "-a"))
 ```{r, warning=FALSE}
 filenames <- tools::file_path_sans_ext(list.files("data", pattern = ".DTA"))
 
-all_data <- process_multiple_files(filenames)
+all_data <- process_multiple_DTAfiles(filenames)
 
 GHz <- 9.28
 
