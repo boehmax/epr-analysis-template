@@ -32,7 +32,7 @@ compute_power_saturation <- function(data, sample_name,
         filter(Field_G == find_closest_value(data_filtered$Field_G, y))
     })
   })
-  
+  power_saturation$sqrt_power <- sqrt(power_saturation$power_uW)
   return(power_saturation)
 }
 
@@ -86,9 +86,9 @@ process_DTAfile <- function(filename) {
 #' @examples
 #' filenames <- c('MB032_10K20uW15G2600SW16scans', 'MB033_15K25uW20G2700SW20scans')
 #' all_data <- process_multiple_files(filenames)
-process_multiple_files <- function(filenames) {
+process_multiple_DTAfiles <- function(filenames) {
   # Apply process_file to each filename and bind results together
-  df_list <- lapply(filenames, process_file)
+  df_list <- lapply(filenames, process_DTAfile)
   combined_df <- bind_rows(df_list)
   
   return(combined_df)

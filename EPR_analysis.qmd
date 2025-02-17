@@ -138,7 +138,7 @@ plotly::ggplotly(power_analysis_plot )
 power <- c(20, 40, 80, 320, 640, 1280)
 
 powerstaturation <- compute_power_saturation(all_data, 
-                                             sample_name= "MBXXX",, 
+                                             sample_name= "MBXXX",
                                              power_levels= power, 
                                              selection_points=selection$selection)
 
@@ -150,18 +150,18 @@ names(Field_G.labs) <- selectiona
 # Compute the slope and intercept from the first two points per facet
 ref_lines <- powerstaturation %>%
   group_by(Field_G) %>%
-  arrange(sqrt) %>%
+  arrange(sqrt_power) %>%
   slice(1:2) %>%
-  summarise(slope = diff(Intensity) / diff(sqrt), intercept = first(Intensity) - first(sqrt) * (diff(Intensity) / diff(sqrt)), .groups = 'drop')
+  summarise(slope = diff(Intensity) / diff(sqrt_power), intercept = first(Intensity) - first(sqrt_power) * (diff(Intensity) / diff(sqrt_power)), .groups = 'drop')
 
-saturation_plot  <- ggplot(powerstaturation, aes(sqrt, Intensity)) +
+saturation_plot  <- ggplot(powerstaturation, aes(sqrt_power, Intensity)) +
   geom_point()+
   ggh4x::facet_grid2(. ~ Field_G, scales = "free_y", labeller = labeller(Field_G = Field_G.labs), independent = "y")+ 
  # geom_smooth(method='lm', color = "black", size=0.5)+
     theme_bw()+
   scale_color_brewer(palette = "Set2")+
   theme(legend.position = "off")+
-  xlab('squarroot of power in sqrt(uW)')+
+  xlab('squarroot of power in sqrt_power(uW)')+
   geom_abline(data = ref_lines, aes(slope = slope, intercept = intercept), color = "darkslategray4", linewidth = 1)
 
 
