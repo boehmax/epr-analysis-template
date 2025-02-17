@@ -161,7 +161,7 @@ saturation_plot  <- ggplot(powerstaturation, aes(sqrt_power, Intensity)) +
     theme_bw()+
   scale_color_brewer(palette = "Set2")+
   theme(legend.position = "off")+
-  xlab('squarroot of power in sqrt_power(uW)')+
+  xlab('squarroot of power in sqrt(uW)')+
   geom_abline(data = ref_lines, aes(slope = slope, intercept = intercept), color = "darkslategray4", linewidth = 1)
 
 
